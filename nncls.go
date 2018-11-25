@@ -4,6 +4,7 @@ package nncls
 
 import (
 	"errors"
+	"fmt"
 
 	tf "github.com/tensorflow/tensorflow/tensorflow/go"
 )
@@ -13,7 +14,7 @@ type Config struct {
 	ModelDir   string // モデルデータのディレクトリ
 	InputName  string // 入力のプレースホルダの名前
 	OutputName string // 出力のプレースホルダの名前
-	NumInput   int // 入力となる特徴量の個数
+	NumInput   int    // 入力となる特徴量の個数
 }
 
 var conf Config
@@ -28,7 +29,7 @@ func Init(c Config) (err error) {
 		conf.InputName = "INPUT"
 	}
 	if conf.OutputName == "" {
-		conf.OutputName = "OUTPUT/Softmax"
+		conf.OutputName = "OUTPUT"
 	}
 	return
 }
@@ -69,7 +70,17 @@ func (m Model) Classify(testData []float32) (classID int, err error) {
 		return
 	}
 	outputInput := m.model.Graph.Operation(conf.InputName)
+	if outputInput == nil {
+		err = errors.New("conf.InputName:" + conf.InputName + " is not found")
+		m.DumpGraphOperations()
+		return
+	}
 	outputOutput := m.model.Graph.Operation(conf.OutputName)
+	if outputOutput == nil {
+		err = errors.New("conf.OutputName:" + conf.OutputName + " is not found")
+		m.DumpGraphOperations()
+		return
+	}
 
 	feeds := map[tf.Output]*tf.Tensor{
 		outputInput.Output(0): tensorTestData,
@@ -89,6 +100,13 @@ func (m Model) Classify(testData []float32) (classID int, err error) {
 	classID = maxIndex(valResult[0])
 
 	return
+}
+
+func (m Model) DumpGraphOperations() {
+	fmt.Println("dumping Graph.Operations....")
+	for i, operation := range m.model.Graph.Operations() {
+		fmt.Println(i, operation.Name())
+	}
 }
 
 // maxIndex : 配列の中で最大値となるインデックス番号を返す関数
