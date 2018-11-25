@@ -35,6 +35,7 @@ elif len(test_x) < len(test_y):
     test_y = test_y[0:len(test_x)]
 
 
+print("saving test.csv...")
 import csv
 with open('test.csv', 'w') as f:
     writer = csv.writer(f, lineterminator='\n') # 改行コード（\n）を指定しておく
@@ -47,4 +48,4 @@ with open('test.csv', 'w') as f:
 #for tx,ty in zip(train_x, train_y):
 #    print(",".join(map(str, tx)), ",", ty)
 
-print(train_x[0])
+#print(train_x[0])

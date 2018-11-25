@@ -2,7 +2,7 @@
 
 import numpy as np
 import tensorflow as tf
-from data2 import (train_x, train_y, test_x, test_y)
+from data import (train_x, train_y, test_x, test_y)
 
 # next_batch : data/label の中から batch_size の個数だけランダムで抜き出す関数
 def next_batch(data, label, batch_size):
@@ -20,17 +20,9 @@ def nn_train(num_input, num_output, batch_size=20, epoch=200, out_prefix='./mode
     # 入力層
     x = tf.placeholder(tf.float32, [None, num_input], name='INPUT')
 
-    # 中間層1
-    hidden1 = tf.layers.dense(inputs=x, units=10, activation=tf.nn.relu, name="hidden1")
-
-    # 中間層2
-    hidden2 = tf.layers.dense(inputs=hidden1, units=20, activation=tf.nn.relu, name="hidden2")
-
-    # 中間層3
-    hidden3 = tf.layers.dense(inputs=hidden2, units=10, activation=tf.nn.relu, name="hidden3")
-
-    # 出力
-    y = tf.layers.dense(inputs=hidden3, units=num_output, activation=tf.nn.softmax, name="OUTPUT")
+    W = tf.Variable(tf.zeros([num_input, num_output]))
+    b = tf.Variable(tf.zeros([num_output]))
+    y = tf.add(tf.matmul(x, W) , b, name="OUTPUT")
 
     # 教師データ
     labels = tf.placeholder(tf.int64, [None], name='teacher_signal')
