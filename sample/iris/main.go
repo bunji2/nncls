@@ -28,7 +28,12 @@ func run() int {
 
 	testDataFile := os.Args[1]
 
-	err := nncls.Init(nncls.Config{})
+	err := nncls.Init(nncls.Config{
+		InputName:  "INPUT",
+		OutputName: "OUTPUT/Softmax",
+		ModelDir:   "./model",
+		NumInput:   4,
+	})
 	model, err := nncls.LoadModel()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "run: Load:", err)
