@@ -11,11 +11,11 @@ import (
 
 // Config : 設定パラメータ
 type Config struct {
-	ModelDir         string  // モデルデータのディレクトリ
-	InputName        string  // 入力のプレースホルダの名前
-	OutputName       string  // 出力のプレースホルダの名前
-	NumInput         int     // 入力となる特徴量の個数
-	LabelThreashould float32 // ラベル判定の閾値
+	ModelDir   string  // モデルデータのディレクトリ
+	InputName  string  // 入力のプレースホルダの名前
+	OutputName string  // 出力のプレースホルダの名前
+	NumInput   int     // 入力となる特徴量の個数
+	Threshold  float32 // ラベル判定の閾値
 }
 
 var conf Config
@@ -32,9 +32,9 @@ func Init(c Config) (err error) {
 	if conf.OutputName == "" {
 		conf.OutputName = "OUTPUT"
 	}
-	if conf.Threshould == 0.0 {
-		conf.Threashould = 0.5
-	}
+	//if conf.Threshold == 0.0 {
+	//	conf.Threshold = 0.5
+	//}
 	return
 }
 
@@ -152,7 +152,9 @@ func (m Model) MultiLabelClassify(testData []float32) (classIDs []int, err error
 	}
 
 	valResult := result[0].Value().([][]float32)
-	classIDs = pickupIndices(valResult[0])
+	//classIDs = pickupIndices(valResult[0])
+	fmt.Println(valResult[0])
+	classIDs = roundList(valResult[0])
 
 	return
 }
@@ -180,12 +182,30 @@ func maxIndex(x []float32) (r int) {
 func pickupIndices(x []float32) (r []int) {
 	r = []int{}
 	for i := 0; i < len(x); i++ {
-		if x[i] > conf.Threashould {
+		if x[i] > conf.Threshold {
 			r = append(r, i)
 		}
 	}
 	if len(r) < 1 {
 		r = append(r, maxIndex(x))
+	}
+	return
+}
+
+// pickupIndices : 配列の要素の中で閾値以下は0,閾値超は1となるリストを返す関数
+func roundList(x []float32) (r []int) {
+	cnt := 0
+	r = make([]int, len(x))
+	for i := 0; i < len(x); i++ {
+		if x[i] > conf.Threshold {
+			r[i] = 1
+			cnt++
+		} else {
+			r[i] = 0
+		}
+	}
+	if cnt < 1 {
+		r[maxIndex(x)] = 1
 	}
 	return
 }
