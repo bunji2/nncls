@@ -45,15 +45,32 @@ func run() int {
 
 	fmt.Println("data,predict,teacher")
 
+	m := nncls.NewMetricsData(10)
 	okCount := 0
 
+	var y, pred, answer []float32
 	var classID int
 	for i := 0; i < len(testX); i++ {
-		classID, err = model.Classify(testX[i])
+		//classID, err = model.Classify(testX[i])
+		y, err = model.Predict(testX[i])
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "run: Classify:", err)
 			break
 		}
+		//fmt.Println("pred =", y)
+		answer, err = nncls.ToOneHot(testY[i], 10)
+		//fmt.Println("answer =", answer)
+
+		classID = nncls.MaxIndex(y)
+
+		pred, err = nncls.ToOneHot(classID, 10)
+		if err != nil {
+			break
+		}
+		for j := 0; j < 10; j++ {
+			m.Add(j, int(pred[j]), int(answer[j]))
+		}
+
 		fmt.Printf("%d,%d,", classID, testY[i])
 		if classID == testY[i] {
 			fmt.Println("OK")
@@ -65,7 +82,15 @@ func run() int {
 	if err != nil {
 		return 4
 	}
-	fmt.Printf("accuracy : %f\n", float32(okCount)/float32(len(testX)))
+	fmt.Println("classID,Precision,Recall,Accuracy")
+	for j := 0; j < 10; j++ {
+		fmt.Printf("%d,%f,%f,%f\n", j, m.Precision(j), m.Recall(j), m.Accuracy(j))
+	}
+	p, r, f, a := m.MicroMetrics()
+	fmt.Println("#,Precision,Recall,F-measure,Accuracy")
+	fmt.Printf("micro,%f,%f,%f,%f\n", p, r, f, a)
+	p, r, f, a = m.MicroMetrics()
+	fmt.Printf("macro,%f,%f,%f,%f\n", p, r, f, a)
 	return 0
 }
 
