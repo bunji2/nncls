@@ -27,7 +27,10 @@ func NewMetricsData(numClass int) (r *MetricsData) {
 }
 
 // Add : クラスごとの予測と回答を追加する
-func (md *MetricsData) Add(classID, pred, answer) {
+//   classID --- クラスの識別子
+//   pred --- 予測 (1 or 0) 1:classIDであると予測 / 0:classIDではないと予測
+//   answer --- 回答 (1 or 0) 1:classIDが回答 / 0:classID以外が回答
+func (md *MetricsData) Add(classID, pred, answer int) {
 	if pred == 1 && answer == 1 {
 		md.tp[classID] = md.tp[classID] + 1
 	} else if pred == 1 && answer == 0 {
@@ -50,7 +53,7 @@ func (md *MetricsData) Total() (r int) {
 		r = md.total
 		return
 	}
-	for classID := 0; classID < numClass; classID++ {
+	for classID := 0; classID < md.numClass; classID++ {
 		r += md.tp[classID] + md.fp[classID] + md.fn[classID] + md.tn[classID]
 	}
 	return
@@ -62,7 +65,7 @@ func (md *MetricsData) TotalTP() (r int) {
 		r = md.totalTP
 		return
 	}
-	for classID := 0; classID < numClass; classID++ {
+	for classID := 0; classID < md.numClass; classID++ {
 		r += md.tp[classID]
 	}
 	return
@@ -74,7 +77,7 @@ func (md *MetricsData) TotalFP() (r int) {
 		r = md.totalFP
 		return
 	}
-	for classID := 0; classID < numClass; classID++ {
+	for classID := 0; classID < md.numClass; classID++ {
 		r += md.fp[classID]
 	}
 	return
@@ -86,7 +89,7 @@ func (md *MetricsData) TotalFN() (r int) {
 		r = md.totalFN
 		return
 	}
-	for classID := 0; classID < numClass; classID++ {
+	for classID := 0; classID < md.numClass; classID++ {
 		r += md.fn[classID]
 	}
 	return
@@ -98,7 +101,7 @@ func (md *MetricsData) TotalTN() (r int) {
 		r = md.totalTN
 		return
 	}
-	for classID := 0; classID < numClass; classID++ {
+	for classID := 0; classID < md.numClass; classID++ {
 		r += md.tn[classID]
 	}
 	return
@@ -124,10 +127,10 @@ func (md *MetricsData) Accuracy(classID int) (r float32) {
 
 // MicroMetrics : 全体の Micro なメトリクス
 func (md *MetricsData) MicroMetrics() (microPrecision, microRecall, microFMeasure, overallAccuracy float32) {
-	totalTP := md.TocalTP()
-	totalFP := md.TocalFP()
-	totalFN := md.TocalFN()
-	totalTN := md.TocalTN()
+	totalTP := md.TotalTP()
+	totalFP := md.TotalFP()
+	totalFN := md.TotalFN()
+	totalTN := md.TotalTN()
 	microPrecision = float32(totalTP) / float32(totalTP+totalFP)
 	microRecall = float32(totalTP) / float32(totalTP+totalFN)
 	microFMeasure = microPrecision * microRecall * 2.0 / (microPrecision + microRecall)
@@ -137,17 +140,18 @@ func (md *MetricsData) MicroMetrics() (microPrecision, microRecall, microFMeasur
 
 // MacroMetrics : 全体の Macro なメトリクス
 func (md *MetricsData) MacroMetrics() (macroPrecision, macroRecall, macroFMeasure, averageAccuracy float32) {
-	p := 0.0
-	r := 0.0
-	a := 0.0
+	p := float32(0)
+	r := float32(0)
+	a := float32(0)
 	for i := 0; i < md.numClass; i++ {
 		p += md.Precision(i)
 		r += md.Recall(i)
 		a += md.Accuracy(i)
 	}
-	macroPrecision = p / md.numClass
-	macroRecall = r / md.numClass
+	numClass := float32(md.numClass)
+	macroPrecision = p / numClass
+	macroRecall = r / numClass
 	macroFMeasure = macroPrecision * macroRecall * 2.0 / (macroPrecision + macroRecall)
-	averageAccuracy = a / md.numClass
+	averageAccuracy = a / numClass
 	return
 }

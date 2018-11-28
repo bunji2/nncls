@@ -3,8 +3,9 @@
 package nncls
 
 import (
-	"errors"
 	"fmt"
+
+	"github.com/pkg/errors"
 
 	tf "github.com/tensorflow/tensorflow/tensorflow/go"
 )
@@ -55,33 +56,34 @@ func LoadModel() (r Model, err error) {
 	return
 }
 
-// Classify : 分類
-// In:  testData --- 特徴データ
-// Out: classID  --- クラスID
-func (m Model) Classify(testData []float32) (classID int, err error) {
+// Predict : 分類
+// In:  x --- 特徴データ
+// Out: y --- クラスID(one_hot)
+func (m Model) Predict(x []float32) (y []float32, err error) {
 	var tensorTestData *tf.Tensor
-	tensorTestData, err = tf.NewTensor([][]float32{testData})
+	tensorTestData, err = tf.NewTensor([][]float32{x})
 	if err != nil {
+		err = errors.Wrap(err, "Predict: failed in tf.NewTensor")
 		return
 	}
 
 	if conf.InputName == "" {
-		err = errors.New("conf.InputName is empty")
+		err = errors.New("Predict: conf.InputName is empty")
 		return
 	}
 	if conf.OutputName == "" {
-		err = errors.New("conf.OutputName is empty")
+		err = errors.New("Predict: conf.OutputName is empty")
 		return
 	}
 	outputInput := m.model.Graph.Operation(conf.InputName)
 	if outputInput == nil {
-		err = errors.New("conf.InputName:" + conf.InputName + " is not found")
+		err = errors.New("Predict: conf.InputName:" + conf.InputName + " is not found")
 		m.DumpGraphOperations()
 		return
 	}
 	outputOutput := m.model.Graph.Operation(conf.OutputName)
 	if outputOutput == nil {
-		err = errors.New("conf.OutputName:" + conf.OutputName + " is not found")
+		err = errors.New("Predict: conf.OutputName:" + conf.OutputName + " is not found")
 		m.DumpGraphOperations()
 		return
 	}
@@ -97,11 +99,27 @@ func (m Model) Classify(testData []float32) (classID int, err error) {
 	result, err = m.model.Session.Run(feeds, fetch, nil)
 
 	if err != nil {
+		err = errors.Wrap(err, "Predict: failed in m.model.Session.Run")
 		return
 	}
 
 	valResult := result[0].Value().([][]float32)
-	classID = maxIndex(valResult[0])
+	y = valResult[0]
+
+	return
+}
+
+// Classify : 分類
+// In:  testData --- 特徴データ
+// Out: classID  --- クラスID
+func (m Model) Classify(testData []float32) (classID int, err error) {
+	var y []float32
+	y, err = m.Predict(testData)
+	if err != nil {
+		err = errors.Wrap(err, "Classify: failed in m.Predict")
+		return
+	}
+	classID = MaxIndex(y)
 
 	return
 }
@@ -109,52 +127,21 @@ func (m Model) Classify(testData []float32) (classID int, err error) {
 // MultiLabelClassify : 分類
 // In:  testData --- 特徴データ
 // Out: classID  --- クラスID
-func (m Model) MultiLabelClassify(testData []float32) (classIDs []int, err error) {
-	var tensorTestData *tf.Tensor
-	tensorTestData, err = tf.NewTensor([][]float32{testData})
+func (m Model) MultiLabelClassify(testData []float32, f func([]float32) []int) (classIDs []int, err error) {
+
+	if f == nil {
+		err = errors.New("MultiLabelClassify: f is empty")
+		return
+	}
+
+	var y []float32
+	y, err = m.Predict(testData)
 	if err != nil {
+		err = errors.Wrap(err, "MultiLabelClassify: failed in m.Predict")
 		return
 	}
 
-	if conf.InputName == "" {
-		err = errors.New("conf.InputName is empty")
-		return
-	}
-	if conf.OutputName == "" {
-		err = errors.New("conf.OutputName is empty")
-		return
-	}
-	outputInput := m.model.Graph.Operation(conf.InputName)
-	if outputInput == nil {
-		err = errors.New("conf.InputName:" + conf.InputName + " is not found")
-		m.DumpGraphOperations()
-		return
-	}
-	outputOutput := m.model.Graph.Operation(conf.OutputName)
-	if outputOutput == nil {
-		err = errors.New("conf.OutputName:" + conf.OutputName + " is not found")
-		m.DumpGraphOperations()
-		return
-	}
-
-	feeds := map[tf.Output]*tf.Tensor{
-		outputInput.Output(0): tensorTestData,
-	}
-	fetch := []tf.Output{
-		outputOutput.Output(0),
-	}
-
-	var result []*tf.Tensor
-	result, err = m.model.Session.Run(feeds, fetch, nil)
-
-	if err != nil {
-		return
-	}
-
-	valResult := result[0].Value().([][]float32)
-	//classIDs = pickupIndices(valResult[0])
-	fmt.Println(valResult[0])
-	classIDs = roundList(valResult[0])
+	classIDs = f(y)
 
 	return
 }
@@ -167,8 +154,8 @@ func (m Model) DumpGraphOperations() {
 	}
 }
 
-// maxIndex : 配列の中で最大値となるインデックス番号を返す関数
-func maxIndex(x []float32) (r int) {
+// MaxIndex : 配列の中で最大値となるインデックス番号を返す関数
+func MaxIndex(x []float32) (r int) {
 	r = 0
 	for i := 1; i < len(x); i++ {
 		if x[i] > x[r] {
@@ -187,13 +174,13 @@ func pickupIndices(x []float32) (r []int) {
 		}
 	}
 	if len(r) < 1 {
-		r = append(r, maxIndex(x))
+		r = append(r, MaxIndex(x))
 	}
 	return
 }
 
-// pickupIndices : 配列の要素の中で閾値以下は0,閾値超は1となるリストを返す関数
-func roundList(x []float32) (r []int) {
+// RoundList : 配列の要素の中で閾値以下は0,閾値超は1となるリストを返す関数
+func RoundList(x []float32) (r []int) {
 	cnt := 0
 	r = make([]int, len(x))
 	for i := 0; i < len(x); i++ {
@@ -205,7 +192,19 @@ func roundList(x []float32) (r []int) {
 		}
 	}
 	if cnt < 1 {
-		r[maxIndex(x)] = 1
+		r[MaxIndex(x)] = 1
 	}
+	return
+}
+
+// ToOneHot : スカラー値をクラス数 numClass の one-hot 形式の配列に変換
+//            逆は MaxIndex。
+func ToOneHot(classID, numClass int) (r []float32, err error) {
+	if classID < 0 || classID >= numClass {
+		err = fmt.Errorf("ToOneHot: classID(%d) is abnormal value against numClass(%d)", classID, numClass)
+		return
+	}
+	r = make([]float32, numClass)
+	r[classID] = float32(1)
 	return
 }
