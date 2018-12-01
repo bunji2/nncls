@@ -47,6 +47,25 @@ func (md *MetricsData) Add(classID, pred, answer int) {
 	md.totalTN = 0
 }
 
+// AddClassID : クラスごとの予測と回答を追加する
+//   predClassID --- 予測したクラス
+//   answerClassID --- 回答となるクラス
+func (md *MetricsData) AddClassID(predClassID, answerClassID int) (err error) {
+	var predOneHot, answerOneHot []float32
+	predOneHot, err = ToOneHot(predClassID, md.numClass)
+	if err != nil {
+		return
+	}
+	answerOneHot, err = ToOneHot(answerClassID, md.numClass)
+	if err != nil {
+		return
+	}
+	for j := 0; j < md.numClass; j++ {
+		md.Add(j, int(predOneHot[j]), int(answerOneHot[j]))
+	}
+	return
+}
+
 // Total : 合計値
 func (md *MetricsData) Total() (r int) {
 	if md.total > 0 {
