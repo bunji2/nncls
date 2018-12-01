@@ -10,6 +10,11 @@ import (
 	"github.com/bunji2/nncls"
 )
 
+const (
+	numClass = 3
+	numInput = 4
+)
+
 var classNames = []string{
 	"setosa",
 	"versicolor",
@@ -32,7 +37,7 @@ func run() int {
 		InputName:  "INPUT",
 		OutputName: "OUTPUT/Softmax",
 		ModelDir:   "./model",
-		NumInput:   4,
+		NumInput:   numInput,
 	})
 	model, err := nncls.LoadModel()
 	if err != nil {
@@ -50,24 +55,45 @@ func run() int {
 
 	fmt.Println("data,predict,teacher")
 
-	okCount := 0
+	md := nncls.NewMetricsData(numClass)
 
-	var classID int
+	var pred []float32
+	var answer []float32
+	var cid int
 	for i := 0; i < len(testX); i++ {
-		classID, err = model.Classify(testX[i])
+		cid, err = model.Classify(testX[i])
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "run: Classify:", err)
 			break
 		}
-		fmt.Printf("%v,%d,%d,", testX[i], classID, testY[i])
-		if classID == testY[i] {
-			fmt.Println("OK")
-			okCount++
-		} else {
-			fmt.Println("NG")
+		pred, err = nncls.ToOneHot(cid, numClass)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "run: ToOneHot:", err)
+			break
+		}
+		answer, err = nncls.ToOneHot(testY[i], numClass)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "run: ToOneHot:", err)
+			break
+		}
+		for j := 0; j < numClass; j++ {
+			md.Add(j, int(pred[j]), int(answer[j]))
 		}
 	}
-	fmt.Printf("accuracy : %f\n", float32(okCount)/float32(len(testX)))
+	if err == nil {
+		microPrecision, microRecall, microFMeasure, overallAccuracy := md.MicroMetrics()
+		macroPrecision, macroRecall, macroFMeasure, averageAccuracy := md.MacroMetrics()
+		fmt.Printf("micro\n")
+		fmt.Printf("Precision:        %f\n", microPrecision)
+		fmt.Printf("Recall:           %f\n", microRecall)
+		fmt.Printf("F-Measure:        %f\n", microFMeasure)
+		fmt.Printf("Overall Accuracy: %f\n", overallAccuracy)
+		fmt.Printf("macro\n")
+		fmt.Printf("Precision:        %f\n", macroPrecision)
+		fmt.Printf("Recall:           %f\n", macroRecall)
+		fmt.Printf("F-Measure:        %f\n", macroFMeasure)
+		fmt.Printf("Average Accuracy: %f\n", averageAccuracy)
+	}
 	return 0
 }
 
