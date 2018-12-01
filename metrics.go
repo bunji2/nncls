@@ -66,6 +66,16 @@ func (md *MetricsData) AddClassID(predClassID, answerClassID int) (err error) {
 	return
 }
 
+// AddLabels : マルチラベルの予測と回答を追加する
+//   predLabels --- 予測したマルチラベル
+//   answerLabels --- 回答となるクラス
+func (md *MetricsData) AddLabels(predLabels, answerLabels []int) (err error) {
+	for j := 0; j < md.numClass; j++ {
+		md.Add(j, predLabels[j], answerLabels[j])
+	}
+	return
+}
+
 // Total : 合計値
 func (md *MetricsData) Total() (r int) {
 	if md.total > 0 {
@@ -129,6 +139,7 @@ func (md *MetricsData) TotalTN() (r int) {
 // Precision : クラスごとの適合率
 func (md *MetricsData) Precision(classID int) (r float32) {
 	r = float32(md.tp[classID]) / float32(md.tp[classID]+md.fp[classID])
+	//fmt.Println("Precision", classID, "=", r)
 	return
 }
 
@@ -168,6 +179,8 @@ func (md *MetricsData) MacroMetrics() (macroPrecision, macroRecall, macroFMeasur
 		a += md.Accuracy(i)
 	}
 	numClass := float32(md.numClass)
+	//fmt.Println("numClass =", numClass)
+	//fmt.Println("p =", p, "r =", r)
 	macroPrecision = p / numClass
 	macroRecall = r / numClass
 	macroFMeasure = macroPrecision * macroRecall * 2.0 / (macroPrecision + macroRecall)
