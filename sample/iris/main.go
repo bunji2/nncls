@@ -57,8 +57,6 @@ func run() int {
 
 	md := nncls.NewMetricsData(numClass)
 
-	var pred []float32
-	var answer []float32
 	var cid int
 	for i := 0; i < len(testX); i++ {
 		cid, err = model.Classify(testX[i])
@@ -66,18 +64,10 @@ func run() int {
 			fmt.Fprintln(os.Stderr, "run: Classify:", err)
 			break
 		}
-		pred, err = nncls.ToOneHot(cid, numClass)
+		err = md.AddClassID(cid, testY[i])
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "run: ToOneHot:", err)
+			fmt.Fprintln(os.Stderr, "run: AddClassID:", err)
 			break
-		}
-		answer, err = nncls.ToOneHot(testY[i], numClass)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "run: ToOneHot:", err)
-			break
-		}
-		for j := 0; j < numClass; j++ {
-			md.Add(j, int(pred[j]), int(answer[j]))
 		}
 	}
 	if err == nil {
