@@ -80,7 +80,8 @@ def nn_train(num_input, num_output, batch_size=20, epoch=200, out_prefix='./mode
 def run():
     #print(train_x[0], train_y[0])
     #return
-    num_input = 741
+    #num_input = 741
+    num_input = 669
     num_output = 13
     batch_size = 40
     epoch = 200

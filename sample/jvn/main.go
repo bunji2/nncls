@@ -12,7 +12,7 @@ import (
 
 const (
 	numClass = 13
-	numInput = 741
+	numInput = 669
 )
 
 func main() {
@@ -135,12 +135,12 @@ func loadTestData(testDataFile string) (testX [][]float32, testY [][]int, err er
 		/*
 			fmt.Println(record)
 		*/
-		fValues, err = toFloat32(record[0:741])
+		fValues, err = toFloat32(record[0:numInput])
 		if err != nil {
 			break
 		}
 		testX = append(testX, fValues)
-		iValues, err = toInt(record[741:])
+		iValues, err = toInt(record[numInput:])
 		if err != nil {
 			break
 		}
