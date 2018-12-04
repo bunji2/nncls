@@ -10,6 +10,11 @@ import (
 	"github.com/bunji2/nncls"
 )
 
+const (
+	numClass = 10
+	numInput = 784
+)
+
 func main() {
 	os.Exit(run())
 }
@@ -26,7 +31,7 @@ func run() int {
 		InputName:  "INPUT",
 		OutputName: "OUTPUT",
 		ModelDir:   "./model",
-		NumInput:   784,
+		NumInput:   numInput,
 	})
 	model, err := nncls.LoadModel()
 	if err != nil {
@@ -43,54 +48,34 @@ func run() int {
 		return 3
 	}
 
-	fmt.Println("data,predict,teacher")
-
-	m := nncls.NewMetricsData(10)
-	okCount := 0
-
-	var y, pred, answer []float32
-	var classID int
+	md := nncls.NewMetricsData(numClass)
+	var cid int
 	for i := 0; i < len(testX); i++ {
-		//classID, err = model.Classify(testX[i])
-		y, err = model.Predict(testX[i])
+		cid, err = model.Classify(testX[i])
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "run: Classify:", err)
 			break
 		}
-		//fmt.Println("pred =", y)
-		answer, err = nncls.ToOneHot(testY[i], 10)
-		//fmt.Println("answer =", answer)
-
-		classID = nncls.MaxIndex(y)
-
-		pred, err = nncls.ToOneHot(classID, 10)
+		err = md.AddClassID(cid, testY[i])
 		if err != nil {
+			fmt.Fprintln(os.Stderr, "run: AddClassID:", err)
 			break
 		}
-		for j := 0; j < 10; j++ {
-			m.Add(j, int(pred[j]), int(answer[j]))
-		}
-
-		fmt.Printf("%d,%d,", classID, testY[i])
-		if classID == testY[i] {
-			fmt.Println("OK")
-			okCount++
-		} else {
-			fmt.Println("NG")
-		}
 	}
-	if err != nil {
-		return 4
+	if err == nil {
+		microPrecision, microRecall, microFMeasure, overallAccuracy := md.MicroMetrics()
+		macroPrecision, macroRecall, macroFMeasure, averageAccuracy := md.MacroMetrics()
+		fmt.Printf("micro\n")
+		fmt.Printf("Precision:        %f\n", microPrecision)
+		fmt.Printf("Recall:           %f\n", microRecall)
+		fmt.Printf("F-Measure:        %f\n", microFMeasure)
+		fmt.Printf("Overall Accuracy: %f\n", overallAccuracy)
+		fmt.Printf("macro\n")
+		fmt.Printf("Precision:        %f\n", macroPrecision)
+		fmt.Printf("Recall:           %f\n", macroRecall)
+		fmt.Printf("F-Measure:        %f\n", macroFMeasure)
+		fmt.Printf("Average Accuracy: %f\n", averageAccuracy)
 	}
-	fmt.Println("classID,Precision,Recall,Accuracy")
-	for j := 0; j < 10; j++ {
-		fmt.Printf("%d,%f,%f,%f\n", j, m.Precision(j), m.Recall(j), m.Accuracy(j))
-	}
-	p, r, f, a := m.MicroMetrics()
-	fmt.Println("#,Precision,Recall,F-measure,Accuracy")
-	fmt.Printf("micro,%f,%f,%f,%f\n", p, r, f, a)
-	p, r, f, a = m.MicroMetrics()
-	fmt.Printf("macro,%f,%f,%f,%f\n", p, r, f, a)
 	return 0
 }
 
